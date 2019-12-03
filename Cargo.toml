@@ -1,0 +1,11 @@
+[package]
+name = "window"
+version = "0.1.0"
+authors = ["Felipe Balcero <juan.balcero@geniussportsmedia.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+winit = "0.20.0-alpha4"
+rand = "0.3.14"
