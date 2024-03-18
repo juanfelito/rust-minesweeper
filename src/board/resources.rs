@@ -9,7 +9,7 @@ pub struct BoardConfig {
 
 impl Default for BoardConfig {
     fn default() -> Self {
-        BoardConfig { width: 7, height: 7, mines: 10 }
+        BoardConfig { width: 16, height: 16, mines: 40 }
     }
 }
 

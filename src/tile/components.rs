@@ -2,7 +2,16 @@ use bevy::prelude::*;
 
 #[derive(Component, Debug)]
 pub struct Tile {
-    pub value: TileValue
+    pub value: TileValue,
+    pub status: TileStatus
+}
+
+#[derive(Debug, PartialEq)]
+pub enum TileStatus {
+    CLOSED,
+    OPENED,
+    FLAGGED,
+    QUESTION,
 }
 
 #[derive(Debug)]

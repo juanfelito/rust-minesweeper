@@ -7,7 +7,6 @@ pub fn populate_board(
 	mut commands: Commands,
 	config: Res<BoardConfig>
 ) {
-	println!("populate");
 	let mut board_creator = BoardCreator {
 		values: vec![vec![0; config.width]; config.height],
 		width: config.width,
@@ -17,7 +16,7 @@ pub fn populate_board(
 
 	board_creator.populate();
 
-	print_board(&board_creator.values);
+	print_board(&board_creator.values); // debug only
 
 	commands.insert_resource(Board{values: board_creator.values});
 }
