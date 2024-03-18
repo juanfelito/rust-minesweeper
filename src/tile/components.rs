@@ -3,7 +3,8 @@ use bevy::prelude::*;
 #[derive(Component, Debug)]
 pub struct Tile {
     pub value: TileValue,
-    pub status: TileStatus
+    pub status: TileStatus,
+    pub coords: (usize, usize)
 }
 
 #[derive(Debug, PartialEq)]

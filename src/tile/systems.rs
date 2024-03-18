@@ -42,7 +42,8 @@ pub fn spawn_tiles(
                 },
                 Tile {
                     value: tile_value,
-                    status: TileStatus::CLOSED
+                    status: TileStatus::CLOSED,
+                    coords: (index_x, index_y)
                 }
             ));
         }
@@ -87,24 +88,69 @@ pub fn hover_exit(
 pub fn mouse_button_input(
     mouse_button_input: Res<ButtonInput<MouseButton>>,
     window_query: Query<&Window, With<PrimaryWindow>>,
-    mut query: Query<(&Transform, &mut Handle<Image>, &mut Tile)>,
+    query: Query<(&Transform, &mut Handle<Image>, &mut Tile)>,
     asset_server: Res<AssetServer>
 ) {
     // Check if left mouse button is clicked
     if mouse_button_input.just_pressed(MouseButton::Left) {
-        let window = window_query.get_single().expect("No primary window");
+        process_tile_click(window_query, query, asset_server, left_click_callback);
+        return
+    }
 
-        if let Some(position) = window.cursor_position() {
-            for (transform, mut handle, mut tile) in query.iter_mut() {
-                if is_hovering(position, transform.translation, window) && tile.status == TileStatus::CLOSED {
-                    tile.status = TileStatus::OPENED;
-                    let new_image = asset_server.load(format!("sprites/{}", tile.value.to_png()));
-                    *handle = new_image;
-                }
+    if mouse_button_input.just_pressed(MouseButton::Right) {
+        process_tile_click(window_query, query, asset_server, right_click_callback);
+    }
+}
+
+fn process_tile_click(
+    window_query: Query<&Window, With<PrimaryWindow>>,
+    mut query: Query<(&Transform, &mut Handle<Image>, &mut Tile)>,
+    asset_server: Res<AssetServer>,
+    callback: fn(&mut Tile, &mut Handle<Image>, &AssetServer)
+) {
+    let window = window_query.get_single().expect("No primary window");
+
+    if let Some(position) = window.cursor_position() {
+        for (transform, mut handle, mut tile) in query.iter_mut() {
+            if is_hovering(position, transform.translation, window) {
+                callback(&mut tile, &mut handle, &asset_server);
             }
         }
     }
 }
+
+fn left_click_callback(tile: &mut Tile, handle: &mut Handle<Image>, asset_server: &AssetServer) {
+    if tile.status == TileStatus::CLOSED {
+        tile.status = TileStatus::OPENED;
+        let new_image = asset_server.load(format!("sprites/{}", tile.value.to_png()));
+        *handle = new_image;
+    }
+    println!("Clicked on {} {}", tile.coords.0, tile.coords.1);
+}
+
+fn right_click_callback(tile: &mut Tile, handle: &mut Handle<Image>, asset_server: &AssetServer) {
+    let mut new_image: Option<Handle<Image>> = None;
+    match tile.status {
+        TileStatus::OPENED => {}
+        TileStatus::CLOSED => {
+            new_image = Some(asset_server.load("sprites/Flagged.png"));
+            tile.status = TileStatus::FLAGGED;
+        }
+        TileStatus::FLAGGED => {
+            new_image = Some(asset_server.load("sprites/question.png"));
+            tile.status = TileStatus::QUESTION;
+        }
+        TileStatus::QUESTION => {
+            new_image = Some(asset_server.load("sprites/Button2.png"));
+            tile.status = TileStatus::CLOSED;
+        }
+    }
+
+    if new_image.is_some() {
+        *handle = new_image.unwrap();
+    }
+}
+
 
 fn is_hovering(mouse_position: Vec2, tile_translation: Vec3, window: &Window) -> bool { 
     (mouse_position.x - tile_translation.x).abs() < TILE_WIDTH / 2.0 &&
