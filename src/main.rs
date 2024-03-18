@@ -1,36 +1,17 @@
-// use winit::{
-//     event::{Event, WindowEvent},
-//     event_loop::{ControlFlow, EventLoop},
-//     window::WindowBuilder,
-// };
+pub mod board;
+pub mod tile;
+mod systems;
 
-// fn main() {
-//     let event_loop = EventLoop::new();
+use bevy::prelude::*;
 
-//     let window = WindowBuilder::new()
-//         .with_title("JuanFelito's minesweeper")
-//         .build(&event_loop)
-//         .unwrap();
-
-//     event_loop.run(move |event, _, control_flow| {
-//         println!("{:?}", event);
-
-//         match event {
-//             Event::WindowEvent {
-//                 event: WindowEvent::CloseRequested,
-//                 window_id,
-//             } if window_id == window.id() => *control_flow = ControlFlow::Exit,
-//             _ => *control_flow = ControlFlow::Wait,
-//         }
-//     });
-// }
-mod board;
+use board::BoardPlugin;
+use tile::TilePlugin;
+use systems::*;
 
 fn main() {
-    let width = 7;
-    let height = 6;
-
-    let array = board::new(width, height);
-
-    array.print_board();
+    App::new()
+        .add_plugins(DefaultPlugins)
+        .add_plugins((BoardPlugin, TilePlugin))
+        .add_systems(Startup, spawn_camera)
+        .run();
 }
