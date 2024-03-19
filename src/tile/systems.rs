@@ -140,9 +140,11 @@ fn right_click_callback(tile: &mut Tile, handle: &mut Handle<Image>, asset_serve
     match tile.status {
         TileStatus::OPENED => {}
         TileStatus::CLOSED => {
-            new_image = Some(asset_server.load("sprites/Flagged.png"));
-            tile.status = TileStatus::FLAGGED;
-            flags.remaining -= 1;
+            if flags.remaining > 0 {
+                new_image = Some(asset_server.load("sprites/Flagged.png"));
+                tile.status = TileStatus::FLAGGED;
+                flags.remaining -= 1;
+            }
         }
         TileStatus::FLAGGED => {
             new_image = Some(asset_server.load("sprites/question.png"));
