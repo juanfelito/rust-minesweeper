@@ -15,7 +15,7 @@ pub enum TileStatus {
     QUESTION,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum TileValue {
     ZERO,
     ONE,

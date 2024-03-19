@@ -17,3 +17,14 @@ impl Default for BoardConfig {
 pub struct Board {
     pub values: Vec<Vec<u8>>
 }
+
+#[derive(Resource)]
+pub struct Flags {
+    pub remaining: u32
+}
+
+impl Default for Flags {
+    fn default() -> Self {
+        Flags { remaining: 40 }
+    }
+}

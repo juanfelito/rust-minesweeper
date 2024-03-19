@@ -1,7 +1,8 @@
 use bevy::asset::AssetPath;
 use bevy::{prelude::*, window::PrimaryWindow};
 
-use crate::board::resources::Board;
+use crate::board::resources::{Board, BoardConfig, Flags};
+use super::events::ZeroClick;
 use super::{TILE_HEIGHT, TILE_WIDTH};
 use super::components::{Tile, TileValue, TileStatus};
 
@@ -88,17 +89,18 @@ pub fn hover_exit(
 pub fn mouse_button_input(
     mouse_button_input: Res<ButtonInput<MouseButton>>,
     window_query: Query<&Window, With<PrimaryWindow>>,
-    query: Query<(&Transform, &mut Handle<Image>, &mut Tile)>,
-    asset_server: Res<AssetServer>
+    tile_query: Query<(&Transform, &mut Handle<Image>, &mut Tile)>,
+    zero_click_ewriter: EventWriter<ZeroClick>,
+    asset_server: Res<AssetServer>,
+    flags: ResMut<Flags>
 ) {
-    // Check if left mouse button is clicked
     if mouse_button_input.just_pressed(MouseButton::Left) {
-        process_tile_click(window_query, query, asset_server, left_click_callback);
+        process_tile_click(window_query, tile_query, asset_server, zero_click_ewriter, flags, left_click_callback);
         return
     }
 
     if mouse_button_input.just_pressed(MouseButton::Right) {
-        process_tile_click(window_query, query, asset_server, right_click_callback);
+        process_tile_click(window_query, tile_query, asset_server, zero_click_ewriter, flags, right_click_callback);
     }
 }
 
@@ -106,39 +108,46 @@ fn process_tile_click(
     window_query: Query<&Window, With<PrimaryWindow>>,
     mut query: Query<(&Transform, &mut Handle<Image>, &mut Tile)>,
     asset_server: Res<AssetServer>,
-    callback: fn(&mut Tile, &mut Handle<Image>, &AssetServer)
+    mut ewriter: EventWriter<ZeroClick>,
+    mut flags: ResMut<Flags>,
+    callback: fn(&mut Tile, &mut Handle<Image>, &AssetServer, &mut EventWriter<ZeroClick>, &mut Flags)
 ) {
     let window = window_query.get_single().expect("No primary window");
 
     if let Some(position) = window.cursor_position() {
         for (transform, mut handle, mut tile) in query.iter_mut() {
             if is_hovering(position, transform.translation, window) {
-                callback(&mut tile, &mut handle, &asset_server);
+                callback(&mut tile, &mut handle, &asset_server, &mut ewriter, &mut flags);
             }
         }
     }
 }
 
-fn left_click_callback(tile: &mut Tile, handle: &mut Handle<Image>, asset_server: &AssetServer) {
+fn left_click_callback(tile: &mut Tile, handle: &mut Handle<Image>, asset_server: &AssetServer, ewriter: &mut EventWriter<ZeroClick>, _: &mut Flags) {
     if tile.status == TileStatus::CLOSED {
         tile.status = TileStatus::OPENED;
         let new_image = asset_server.load(format!("sprites/{}", tile.value.to_png()));
         *handle = new_image;
+
+        if tile.value == TileValue::ZERO {
+            ewriter.send(ZeroClick { coords: (tile.coords.0, tile.coords.1) });
+        }
     }
-    println!("Clicked on {} {}", tile.coords.0, tile.coords.1);
 }
 
-fn right_click_callback(tile: &mut Tile, handle: &mut Handle<Image>, asset_server: &AssetServer) {
+fn right_click_callback(tile: &mut Tile, handle: &mut Handle<Image>, asset_server: &AssetServer, _: &mut EventWriter<ZeroClick>, flags: &mut Flags) {
     let mut new_image: Option<Handle<Image>> = None;
     match tile.status {
         TileStatus::OPENED => {}
         TileStatus::CLOSED => {
             new_image = Some(asset_server.load("sprites/Flagged.png"));
             tile.status = TileStatus::FLAGGED;
+            flags.remaining -= 1;
         }
         TileStatus::FLAGGED => {
             new_image = Some(asset_server.load("sprites/question.png"));
             tile.status = TileStatus::QUESTION;
+            flags.remaining += 1;
         }
         TileStatus::QUESTION => {
             new_image = Some(asset_server.load("sprites/Button2.png"));
@@ -151,6 +160,36 @@ fn right_click_callback(tile: &mut Tile, handle: &mut Handle<Image>, asset_serve
     }
 }
 
+pub fn handle_zero_click(
+    mut events: ParamSet<(EventReader<ZeroClick>, EventWriter<ZeroClick>)>,
+    board: Res<BoardConfig>,
+    mut tile_query: Query<(&mut Handle<Image>, &mut Tile)>,
+    asset_server: Res<AssetServer>,
+    mut flags: ResMut<Flags>
+) {
+    let mut event_coords: Vec<(usize, usize)> =  vec![];
+    for event in events.p0().read().into_iter() {
+        event_coords.push((event.coords.0, event.coords.1));
+    }
+
+    for coords in event_coords.iter() {
+        let x = coords.0;
+        let y = coords.1;
+
+        let initial_x = if x == 0 {0} else {x-1};
+		let final_x = if x+1 > board.height-1 {board.height-1} else {x+1};
+		let initial_y = if y == 0 {0} else {y-1};
+		let final_y = if y+1 > board.width-1 {board.width-1} else {y+1};
+	
+        for (mut handle, mut tile) in tile_query.iter_mut() {
+            if (tile.coords.0 >= initial_x && tile.coords.0 <= final_x) && (tile.coords.1 >= initial_y && tile.coords.1 <= final_y) {
+                if tile.status == TileStatus::CLOSED {
+                    left_click_callback(&mut tile, &mut handle, &asset_server, &mut events.p1(), &mut flags)
+                }
+            }
+        }
+    }
+}
 
 fn is_hovering(mouse_position: Vec2, tile_translation: Vec3, window: &Window) -> bool { 
     (mouse_position.x - tile_translation.x).abs() < TILE_WIDTH / 2.0 &&
