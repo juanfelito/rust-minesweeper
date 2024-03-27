@@ -21,8 +21,9 @@ impl Plugin for TilePlugin {
             .add_systems(Update, (
                 hover_enter.before(hover_exit),
                 hover_exit,
-                mouse_button_input,
-                handle_zero_click.before(mouse_button_input)
+                handle_left_click,
+                handle_right_click,
+                handle_zero_click.before(handle_left_click)
             ));
     }
 }

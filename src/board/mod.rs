@@ -15,6 +15,7 @@ impl Plugin for BoardPlugin {
         app
             .init_resource::<BoardConfig>()
             .init_resource::<Flags>()
+            .init_resource::<ClosedEmpty>()
             .add_systems(Startup, populate_board.before(spawn_tiles));
     }
 }

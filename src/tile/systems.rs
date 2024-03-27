@@ -86,44 +86,32 @@ pub fn hover_exit(
     }
 }
 
-pub fn mouse_button_input(
+pub fn handle_left_click(
     mouse_button_input: Res<ButtonInput<MouseButton>>,
     window_query: Query<&Window, With<PrimaryWindow>>,
-    tile_query: Query<(&Transform, &mut Handle<Image>, &mut Tile)>,
-    zero_click_ewriter: EventWriter<ZeroClick>,
+    mut tile_query: Query<(&Transform, &mut Handle<Image>, &mut Tile)>,
+    mut zero_click_ewriter: EventWriter<ZeroClick>,
     asset_server: Res<AssetServer>,
-    flags: ResMut<Flags>
 ) {
     if mouse_button_input.just_pressed(MouseButton::Left) {
-        process_tile_click(window_query, tile_query, asset_server, zero_click_ewriter, flags, left_click_callback);
-        return
-    }
+        let window = window_query.get_single().expect("No primary window");
 
-    if mouse_button_input.just_pressed(MouseButton::Right) {
-        process_tile_click(window_query, tile_query, asset_server, zero_click_ewriter, flags, right_click_callback);
-    }
-}
-
-fn process_tile_click(
-    window_query: Query<&Window, With<PrimaryWindow>>,
-    mut query: Query<(&Transform, &mut Handle<Image>, &mut Tile)>,
-    asset_server: Res<AssetServer>,
-    mut ewriter: EventWriter<ZeroClick>,
-    mut flags: ResMut<Flags>,
-    callback: fn(&mut Tile, &mut Handle<Image>, &AssetServer, &mut EventWriter<ZeroClick>, &mut Flags)
-) {
-    let window = window_query.get_single().expect("No primary window");
-
-    if let Some(position) = window.cursor_position() {
-        for (transform, mut handle, mut tile) in query.iter_mut() {
-            if is_hovering(position, transform.translation, window) {
-                callback(&mut tile, &mut handle, &asset_server, &mut ewriter, &mut flags);
+        if let Some(position) = window.cursor_position() {
+            for (transform, mut handle, mut tile) in tile_query.iter_mut() {
+                if is_hovering(position, transform.translation, window) {
+                    execute_left_click(&mut tile, &mut handle, &asset_server, &mut zero_click_ewriter);
+                }
             }
         }
     }
 }
 
-fn left_click_callback(tile: &mut Tile, handle: &mut Handle<Image>, asset_server: &AssetServer, ewriter: &mut EventWriter<ZeroClick>, _: &mut Flags) {
+fn execute_left_click(
+    tile: &mut Tile,
+    handle: &mut Handle<Image>,
+    asset_server: &AssetServer,
+    ewriter: &mut EventWriter<ZeroClick>
+) {
     if tile.status == TileStatus::CLOSED {
         tile.status = TileStatus::OPENED;
         let new_image = asset_server.load(format!("sprites/{}", tile.value.to_png()));
@@ -135,30 +123,46 @@ fn left_click_callback(tile: &mut Tile, handle: &mut Handle<Image>, asset_server
     }
 }
 
-fn right_click_callback(tile: &mut Tile, handle: &mut Handle<Image>, asset_server: &AssetServer, _: &mut EventWriter<ZeroClick>, flags: &mut Flags) {
-    let mut new_image: Option<Handle<Image>> = None;
-    match tile.status {
-        TileStatus::OPENED => {}
-        TileStatus::CLOSED => {
-            if flags.remaining > 0 {
-                new_image = Some(asset_server.load("sprites/Flagged.png"));
-                tile.status = TileStatus::FLAGGED;
-                flags.remaining -= 1;
+pub fn handle_right_click(
+    mouse_button_input: Res<ButtonInput<MouseButton>>,
+    window_query: Query<&Window, With<PrimaryWindow>>,
+    mut tile_query: Query<(&Transform, &mut Handle<Image>, &mut Tile)>,
+    asset_server: Res<AssetServer>,
+    mut flags: ResMut<Flags>
+) {
+    if mouse_button_input.just_pressed(MouseButton::Right) {
+        let window = window_query.get_single().expect("No primary window");
+
+        if let Some(position) = window.cursor_position() {
+            for (transform, mut handle, mut tile) in tile_query.iter_mut() {
+                if is_hovering(position, transform.translation, window) {
+                    let mut new_image: Option<Handle<Image>> = None;
+                    match tile.status {
+                        TileStatus::OPENED => {}
+                        TileStatus::CLOSED => {
+                            if flags.remaining > 0 {
+                                new_image = Some(asset_server.load("sprites/Flagged.png"));
+                                tile.status = TileStatus::FLAGGED;
+                                flags.remaining -= 1;
+                            }
+                        }
+                        TileStatus::FLAGGED => {
+                            new_image = Some(asset_server.load("sprites/question.png"));
+                            tile.status = TileStatus::QUESTION;
+                            flags.remaining += 1;
+                        }
+                        TileStatus::QUESTION => {
+                            new_image = Some(asset_server.load("sprites/Button2.png"));
+                            tile.status = TileStatus::CLOSED;
+                        }
+                    }
+
+                    if new_image.is_some() {
+                        *handle = new_image.unwrap();
+                    }
+                }
             }
         }
-        TileStatus::FLAGGED => {
-            new_image = Some(asset_server.load("sprites/question.png"));
-            tile.status = TileStatus::QUESTION;
-            flags.remaining += 1;
-        }
-        TileStatus::QUESTION => {
-            new_image = Some(asset_server.load("sprites/Button2.png"));
-            tile.status = TileStatus::CLOSED;
-        }
-    }
-
-    if new_image.is_some() {
-        *handle = new_image.unwrap();
     }
 }
 
@@ -166,8 +170,7 @@ pub fn handle_zero_click(
     mut events: ParamSet<(EventReader<ZeroClick>, EventWriter<ZeroClick>)>,
     board: Res<BoardConfig>,
     mut tile_query: Query<(&mut Handle<Image>, &mut Tile)>,
-    asset_server: Res<AssetServer>,
-    mut flags: ResMut<Flags>
+    asset_server: Res<AssetServer>
 ) {
     let mut event_coords: Vec<(usize, usize)> =  vec![];
     for event in events.p0().read().into_iter() {
@@ -179,14 +182,14 @@ pub fn handle_zero_click(
         let y = coords.1;
 
         let initial_x = if x == 0 {0} else {x-1};
-		let final_x = if x+1 > board.height-1 {board.height-1} else {x+1};
+		let final_x = if x+1 > board.width-1 {board.width-1} else {x+1};
 		let initial_y = if y == 0 {0} else {y-1};
-		let final_y = if y+1 > board.width-1 {board.width-1} else {y+1};
+		let final_y = if y+1 > board.height-1 {board.height-1} else {y+1};
 	
         for (mut handle, mut tile) in tile_query.iter_mut() {
             if (tile.coords.0 >= initial_x && tile.coords.0 <= final_x) && (tile.coords.1 >= initial_y && tile.coords.1 <= final_y) {
                 if tile.status == TileStatus::CLOSED {
-                    left_click_callback(&mut tile, &mut handle, &asset_server, &mut events.p1(), &mut flags)
+                    execute_left_click(&mut tile, &mut handle, &asset_server, &mut events.p1());
                 }
             }
         }
