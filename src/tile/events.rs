@@ -4,3 +4,6 @@ use bevy::prelude::*;
 pub struct ZeroClick {
     pub coords: (usize, usize)
 }
+
+#[derive(Event)]
+pub struct DoubleClick {}

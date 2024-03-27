@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use bevy::asset::AssetPath;
 use bevy::{prelude::*, window::PrimaryWindow};
 
@@ -5,7 +7,8 @@ use crate::board::resources::{Board, BoardConfig, ClosedEmpty, Flags};
 use crate::events::GameOver;
 
 use super::events::ZeroClick;
-use super::{TILE_HEIGHT, TILE_WIDTH};
+use super::resources::LastClick;
+use super::{DoubleClick, TILE_HEIGHT, TILE_WIDTH};
 use super::components::{Tile, TileValue, TileStatus};
 
 pub fn spawn_tiles(
@@ -221,6 +224,57 @@ fn is_hovering(mouse_position: Vec2, tile_translation: Vec3, window: &Window) ->
 
 fn inverse_number(input: f32, max_value: f32) -> f32 {
     (max_value - input) % (max_value + 1.0)
+}
+
+pub fn reveal_final_board(
+	mut tile_query: Query<(&mut Handle<Image>, &Tile)>,
+    asset_server: Res<AssetServer>
+) {
+    for (mut handle, tile) in tile_query.iter_mut() {
+        let mut new_image = None;
+        match tile.status {
+            TileStatus::CLOSED => {
+                new_image = Some(asset_server.load(format!("sprites/{}", tile.value.to_png())));
+            }
+            TileStatus::FLAGGED => {
+                if tile.value ==  TileValue::MINE {
+                    new_image = Some(asset_server.load("sprites/Flaggedbomb.png"));
+                } else {
+                    new_image = Some(asset_server.load("sprites/falseflag.png"));
+                }
+            }
+            TileStatus::QUESTION => {}
+            TileStatus::OPENED => {}
+        }
+
+        if new_image.is_some() {
+            *handle = new_image.unwrap();  
+        }
+    }
+}
+
+pub fn detect_double_click(
+    time: Res<Time>,
+    mut last_click: ResMut<LastClick>,
+    mouse_button_input: Res<ButtonInput<MouseButton>>,
+    mut ewritter: EventWriter<DoubleClick>
+) {
+    if mouse_button_input.just_pressed(MouseButton::Left) {
+        if last_click.time.elapsed() < Duration::from_millis(500) {
+            ewritter.send(DoubleClick{});
+        }
+
+        last_click.time.reset();
+    }
+    last_click.time.tick(time.delta());
+}
+
+pub fn handle_double_click(
+    mut ereader: EventReader<DoubleClick>
+) {
+    for _ in ereader.read().into_iter() {
+        println!("Double click");
+    }
 }
 
 fn u8_to_tile_value(input: &u8) -> TileValue {
