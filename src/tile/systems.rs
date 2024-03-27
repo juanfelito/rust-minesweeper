@@ -2,6 +2,8 @@ use bevy::asset::AssetPath;
 use bevy::{prelude::*, window::PrimaryWindow};
 
 use crate::board::resources::{Board, BoardConfig, ClosedEmpty, Flags};
+use crate::events::GameOver;
+
 use super::events::ZeroClick;
 use super::{TILE_HEIGHT, TILE_WIDTH};
 use super::components::{Tile, TileValue, TileStatus};
@@ -91,6 +93,7 @@ pub fn handle_left_click(
     window_query: Query<&Window, With<PrimaryWindow>>,
     mut tile_query: Query<(&Transform, &mut Handle<Image>, &mut Tile)>,
     mut zero_click_ewriter: EventWriter<ZeroClick>,
+    mut game_over_ewriter: EventWriter<GameOver>,
     asset_server: Res<AssetServer>,
     mut remaining: ResMut<ClosedEmpty>
 ) {
@@ -100,7 +103,7 @@ pub fn handle_left_click(
         if let Some(position) = window.cursor_position() {
             for (transform, mut handle, mut tile) in tile_query.iter_mut() {
                 if is_hovering(position, transform.translation, window) {
-                    execute_left_click(&mut tile, &mut handle, &asset_server, &mut zero_click_ewriter, &mut remaining);
+                    execute_left_click(&mut tile, &mut handle, &asset_server, &mut zero_click_ewriter, &mut game_over_ewriter, &mut remaining);
                 }
             }
         }
@@ -111,17 +114,27 @@ fn execute_left_click(
     tile: &mut Tile,
     handle: &mut Handle<Image>,
     asset_server: &AssetServer,
-    ewriter: &mut EventWriter<ZeroClick>,
+    zero_click_ewriter: &mut EventWriter<ZeroClick>,
+    game_over_ewriter: &mut EventWriter<GameOver>,
     remaining: &mut ClosedEmpty
 ) {
-    if tile.status == TileStatus::CLOSED && tile.value != TileValue::MINE {
+    if tile.status == TileStatus::CLOSED {
         tile.status = TileStatus::OPENED;
+
+        if tile.value == TileValue::MINE {
+            let new_image = asset_server.load("sprites/loosingbomb.png");
+            *handle = new_image;
+
+            game_over_ewriter.send(GameOver {won: false});
+            return
+        }
+
         remaining.count -= 1;
         let new_image = asset_server.load(format!("sprites/{}", tile.value.to_png()));
         *handle = new_image;
 
         if tile.value == TileValue::ZERO {
-            ewriter.send(ZeroClick { coords: (tile.coords.0, tile.coords.1) });
+            zero_click_ewriter.send(ZeroClick { coords: (tile.coords.0, tile.coords.1) });
         }
     }
 }
@@ -171,6 +184,7 @@ pub fn handle_right_click(
 
 pub fn handle_zero_click(
     mut events: ParamSet<(EventReader<ZeroClick>, EventWriter<ZeroClick>)>,
+    mut game_over_ewriter: EventWriter<GameOver>,
     board: Res<BoardConfig>,
     mut tile_query: Query<(&mut Handle<Image>, &mut Tile)>,
     asset_server: Res<AssetServer>,
@@ -193,7 +207,7 @@ pub fn handle_zero_click(
         for (mut handle, mut tile) in tile_query.iter_mut() {
             if (tile.coords.0 >= initial_x && tile.coords.0 <= final_x) && (tile.coords.1 >= initial_y && tile.coords.1 <= final_y) {
                 if tile.status == TileStatus::CLOSED {
-                    execute_left_click(&mut tile, &mut handle, &asset_server, &mut events.p1(), &mut remaining);
+                    execute_left_click(&mut tile, &mut handle, &asset_server, &mut events.p1(), &mut game_over_ewriter, &mut remaining);
                 }
             }
         }

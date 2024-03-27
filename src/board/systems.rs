@@ -1,6 +1,8 @@
 use bevy::prelude::*;
 use rand::Rng;
 
+use crate::events::GameOver;
+
 use super::{Board, BoardConfig, ClosedEmpty};
 
 pub fn populate_board(
@@ -22,10 +24,15 @@ pub fn populate_board(
 }
 
 pub fn handle_remaining_tiles(
-	remaining: Res<ClosedEmpty>
+	remaining: Res<ClosedEmpty>,
+	mut game_over_ewriter: EventWriter<GameOver>,
 ) {
 	if remaining.is_changed() {
 		println!("{}", remaining.count);
+		// move to the condition above
+		if remaining.count == 0 {
+			game_over_ewriter.send(GameOver{ won: true });
+		}
 	}
 }
 

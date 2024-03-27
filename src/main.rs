@@ -1,6 +1,7 @@
 pub mod board;
 pub mod tile;
 pub mod hud;
+pub mod events;
 mod systems;
 
 use bevy::prelude::*;
@@ -8,7 +9,7 @@ use bevy::prelude::*;
 use board::BoardPlugin;
 use tile::TilePlugin;
 use hud::HudPlugin;
-use systems::*;
+use systems::MainPlugin;
 
 fn main() {
     App::new()
@@ -16,8 +17,7 @@ fn main() {
             ImagePlugin::default_nearest()
         ))
         .init_state::<AppState>()
-        .add_plugins((BoardPlugin, TilePlugin, HudPlugin))
-        .add_systems(Startup, spawn_camera)
+        .add_plugins((BoardPlugin, TilePlugin, HudPlugin, MainPlugin))
         .run();
 }
 
