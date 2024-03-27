@@ -17,7 +17,11 @@ impl Plugin for HudPlugin {
             // OnEnter Systems
             .add_systems(OnEnter(AppState::Game), spawn_hud)
             // Systems
-            .add_systems(Update, update_flag_text.run_if(in_state(AppState::Game)))
+            .add_systems(Update, (
+                    update_flag_text,
+                    update_clock_text
+                ).run_if(in_state(AppState::Game))
+            )
             // OnExit Systems
             .add_systems(OnExit(AppState::Game), despawn_hud);
     }

@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 use bevy::window::{PrimaryWindow, close_on_esc};
 
+use crate::clock::resources::{Clock, FinalTimes};
 use crate::events::*;
 use crate::AppState;
 
@@ -15,10 +16,14 @@ pub fn spawn_camera(mut commands: Commands, window_query: Query<&Window, With<Pr
 
 pub fn handle_game_over(
     mut game_over_ereader: EventReader<GameOver>,
-    mut next_app_state: ResMut<NextState<AppState>>
+    mut next_app_state: ResMut<NextState<AppState>>,
+    clock: Res<Clock>,
+    mut final_scores: ResMut<FinalTimes>
 ) {
     for event in game_over_ereader.read().into_iter() {
         println!("You won: {}!", event.won);
+        final_scores.scores.push(clock.time.elapsed().as_secs());
+        println!("Scores: {:?}", final_scores.scores);
         next_app_state.set(AppState::GameOver);
     }
 }

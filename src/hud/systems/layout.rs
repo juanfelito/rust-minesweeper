@@ -48,6 +48,31 @@ pub fn build_hud(commands: &mut Commands, asset_server: &Res<AssetServer>) -> En
                         FlagText {},
                     ));
                 });
+            
+            parent
+                .spawn(NodeBundle {
+                    style: RHS_STYLE,
+                    background_color: BACKGROUND_COLOR.into(),
+                    ..default()
+                })
+                .with_children(|parent| {
+                    // Clock Text
+                    parent.spawn((
+                        TextBundle {
+                            style: Style { ..default() },
+                            text: Text {
+                                sections: vec![TextSection::new(
+                                    "000",
+                                    get_text_style(&asset_server),
+                                )],
+                                justify: JustifyText::Center,
+                                ..default()
+                            },
+                            ..default()
+                        },
+                        ClockText {},
+                    ));
+                });
         })
         .id();
 
