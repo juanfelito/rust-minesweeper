@@ -16,6 +16,7 @@ impl Plugin for BoardPlugin {
             .init_resource::<BoardConfig>()
             .init_resource::<Flags>()
             .init_resource::<ClosedEmpty>()
-            .add_systems(Startup, populate_board.before(spawn_tiles));
+            .add_systems(Startup, populate_board.before(spawn_tiles))
+            .add_systems(Update, handle_remaining_tiles);
     }
 }

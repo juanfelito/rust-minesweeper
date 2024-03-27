@@ -10,7 +10,7 @@ pub struct BoardConfig {
 // 30, 16, 99
 impl Default for BoardConfig {
     fn default() -> Self {
-        BoardConfig { width: 30, height: 16, mines: 99 }
+        BoardConfig { width: 16, height: 16, mines: 40 }
     }
 }
 
@@ -28,7 +28,7 @@ pub struct Flags {
 // 99
 impl Default for Flags {
     fn default() -> Self {
-        Flags { remaining: 99 }
+        Flags { remaining: 40 }
     }
 }
 
@@ -41,6 +41,6 @@ pub struct ClosedEmpty {
 // 381
 impl Default for ClosedEmpty {
     fn default() -> Self {
-        ClosedEmpty { count: 381 }
+        ClosedEmpty { count: 216 }
     }
 }

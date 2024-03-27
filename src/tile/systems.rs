@@ -1,7 +1,7 @@
 use bevy::asset::AssetPath;
 use bevy::{prelude::*, window::PrimaryWindow};
 
-use crate::board::resources::{Board, BoardConfig, Flags};
+use crate::board::resources::{Board, BoardConfig, ClosedEmpty, Flags};
 use super::events::ZeroClick;
 use super::{TILE_HEIGHT, TILE_WIDTH};
 use super::components::{Tile, TileValue, TileStatus};
@@ -92,6 +92,7 @@ pub fn handle_left_click(
     mut tile_query: Query<(&Transform, &mut Handle<Image>, &mut Tile)>,
     mut zero_click_ewriter: EventWriter<ZeroClick>,
     asset_server: Res<AssetServer>,
+    mut remaining: ResMut<ClosedEmpty>
 ) {
     if mouse_button_input.just_pressed(MouseButton::Left) {
         let window = window_query.get_single().expect("No primary window");
@@ -99,7 +100,7 @@ pub fn handle_left_click(
         if let Some(position) = window.cursor_position() {
             for (transform, mut handle, mut tile) in tile_query.iter_mut() {
                 if is_hovering(position, transform.translation, window) {
-                    execute_left_click(&mut tile, &mut handle, &asset_server, &mut zero_click_ewriter);
+                    execute_left_click(&mut tile, &mut handle, &asset_server, &mut zero_click_ewriter, &mut remaining);
                 }
             }
         }
@@ -110,10 +111,12 @@ fn execute_left_click(
     tile: &mut Tile,
     handle: &mut Handle<Image>,
     asset_server: &AssetServer,
-    ewriter: &mut EventWriter<ZeroClick>
+    ewriter: &mut EventWriter<ZeroClick>,
+    remaining: &mut ClosedEmpty
 ) {
-    if tile.status == TileStatus::CLOSED {
+    if tile.status == TileStatus::CLOSED && tile.value != TileValue::MINE {
         tile.status = TileStatus::OPENED;
+        remaining.count -= 1;
         let new_image = asset_server.load(format!("sprites/{}", tile.value.to_png()));
         *handle = new_image;
 
@@ -170,7 +173,8 @@ pub fn handle_zero_click(
     mut events: ParamSet<(EventReader<ZeroClick>, EventWriter<ZeroClick>)>,
     board: Res<BoardConfig>,
     mut tile_query: Query<(&mut Handle<Image>, &mut Tile)>,
-    asset_server: Res<AssetServer>
+    asset_server: Res<AssetServer>,
+    mut remaining: ResMut<ClosedEmpty>
 ) {
     let mut event_coords: Vec<(usize, usize)> =  vec![];
     for event in events.p0().read().into_iter() {
@@ -189,7 +193,7 @@ pub fn handle_zero_click(
         for (mut handle, mut tile) in tile_query.iter_mut() {
             if (tile.coords.0 >= initial_x && tile.coords.0 <= final_x) && (tile.coords.1 >= initial_y && tile.coords.1 <= final_y) {
                 if tile.status == TileStatus::CLOSED {
-                    execute_left_click(&mut tile, &mut handle, &asset_server, &mut events.p1());
+                    execute_left_click(&mut tile, &mut handle, &asset_server, &mut events.p1(), &mut remaining);
                 }
             }
         }

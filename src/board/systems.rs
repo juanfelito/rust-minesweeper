@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use rand::Rng;
 
-use super::{Board, BoardConfig};
+use super::{Board, BoardConfig, ClosedEmpty};
 
 pub fn populate_board(
 	mut commands: Commands,
@@ -19,6 +19,14 @@ pub fn populate_board(
 	print_board(&board_creator.values); // debug only
 
 	commands.insert_resource(Board{values: board_creator.values});
+}
+
+pub fn handle_remaining_tiles(
+	remaining: Res<ClosedEmpty>
+) {
+	if remaining.is_changed() {
+		println!("{}", remaining.count);
+	}
 }
 
 pub fn print_board(board: &Vec<Vec<u8>>) {
