@@ -15,7 +15,16 @@ fn main() {
         .add_plugins(DefaultPlugins.set(
             ImagePlugin::default_nearest()
         ))
+        .init_state::<AppState>()
         .add_plugins((BoardPlugin, TilePlugin, HudPlugin))
         .add_systems(Startup, spawn_camera)
         .run();
+}
+
+#[derive(States, Debug, Hash, Eq, PartialEq, Clone, Default)]
+pub enum AppState {
+    MainMenu,
+    #[default]
+    Game,
+    GameOver,
 }

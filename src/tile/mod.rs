@@ -4,9 +4,10 @@ pub mod events;
 
 use bevy::prelude::*;
 
+use events::ZeroClick;
 use systems::*;
 
-use self::events::ZeroClick;
+use crate::AppState;
 
 const TILE_WIDTH: f32 = 36.0;
 const TILE_HEIGHT: f32 = 36.0;
@@ -17,13 +18,13 @@ impl Plugin for TilePlugin {
     fn build(&self, app: &mut App) {
         app
             .add_event::<ZeroClick>()
-            .add_systems(Startup, spawn_tiles)
+            .add_systems(OnEnter(AppState::Game), spawn_tiles)
             .add_systems(Update, (
                 hover_enter.before(hover_exit),
                 hover_exit,
                 handle_left_click,
                 handle_right_click,
                 handle_zero_click.before(handle_left_click)
-            ));
+            ).run_if(in_state(AppState::Game)));
     }
 }
