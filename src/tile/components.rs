@@ -44,4 +44,19 @@ impl TileValue {
             Self::MINE => "bomb.png".to_string(),
         }
     }
+
+    pub fn to_u8(&self) -> u8 {
+        match self {
+            Self::ZERO => 0,
+            Self::ONE => 1,
+            Self::TWO => 2,
+            Self::THREE => 3,
+            Self::FOUR => 4,
+            Self::FIVE => 5,
+            Self::SIX => 6,
+            Self::SEVEN => 7,
+            Self::EIGHT => 8,
+            Self::MINE => 9
+        }
+    }
 }

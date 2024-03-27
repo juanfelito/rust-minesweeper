@@ -22,6 +22,7 @@ impl Plugin for TilePlugin {
         app
             .add_event::<ZeroClick>()
             .add_event::<DoubleClick>()
+            .add_event::<OpenSurrounding>()
             .init_resource::<LastClick>()
             .add_systems(OnEnter(AppState::Game), spawn_tiles)
             .add_systems(Update, (
@@ -31,7 +32,8 @@ impl Plugin for TilePlugin {
                 handle_right_click,
                 handle_zero_click.before(handle_left_click),
                 detect_double_click,
-                handle_double_click
+                handle_double_click,
+                handle_open_surrounding
             ).run_if(in_state(AppState::Game)))
             .add_systems(OnEnter(AppState::GameOver), reveal_final_board);
     }

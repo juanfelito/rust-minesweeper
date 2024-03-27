@@ -7,3 +7,9 @@ pub struct ZeroClick {
 
 #[derive(Event)]
 pub struct DoubleClick {}
+
+#[derive(Event)]
+pub struct OpenSurrounding {
+    pub coords: (usize, usize),
+    pub value: u8
+}

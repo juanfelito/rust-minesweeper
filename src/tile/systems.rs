@@ -6,9 +6,9 @@ use bevy::{prelude::*, window::PrimaryWindow};
 use crate::board::resources::{Board, BoardConfig, ClosedEmpty, Flags};
 use crate::events::GameOver;
 
-use super::events::ZeroClick;
+use super::events::*;
 use super::resources::LastClick;
-use super::{DoubleClick, TILE_HEIGHT, TILE_WIDTH};
+use super::{TILE_HEIGHT, TILE_WIDTH};
 use super::components::{Tile, TileValue, TileStatus};
 
 pub fn spawn_tiles(
@@ -270,10 +270,66 @@ pub fn detect_double_click(
 }
 
 pub fn handle_double_click(
-    mut ereader: EventReader<DoubleClick>
+    mut ereader: EventReader<DoubleClick>,
+    window_query: Query<&Window, With<PrimaryWindow>>,
+    tile_query: Query<(&Transform, &Tile)>,
+    mut open_surrounding_ewriter: EventWriter<OpenSurrounding>
 ) {
     for _ in ereader.read().into_iter() {
-        println!("Double click");
+        let window = window_query.get_single().expect("No primary window");
+
+        if let Some(position) = window.cursor_position() {
+            for (transform, tile) in tile_query.iter() {
+                if is_hovering(position, transform.translation, window) && tile.status == TileStatus::OPENED && tile.value != TileValue::ZERO {
+                   open_surrounding_ewriter.send(OpenSurrounding{ coords: (tile.coords.0, tile.coords.1), value: tile.value.to_u8() });
+                }
+            }
+        }
+    }
+}
+
+pub fn handle_open_surrounding(
+    mut ereader: EventReader<OpenSurrounding>,
+    mut zero_click_ewriter: EventWriter<ZeroClick>,
+    mut game_over_ewriter: EventWriter<GameOver>,
+    board: Res<BoardConfig>,
+    mut queries: ParamSet<(Query<(Entity, &Tile)>, Query<(&mut Handle<Image>, &mut Tile)>)>,
+    asset_server: Res<AssetServer>,
+    mut remaining: ResMut<ClosedEmpty>
+) {
+    for event in ereader.read().into_iter() {
+        let x = event.coords.0;
+        let y = event.coords.1;
+
+        let initial_x = if x == 0 {0} else {x-1};
+		let final_x = if x+1 > board.width-1 {board.width-1} else {x+1};
+		let initial_y = if y == 0 {0} else {y-1};
+		let final_y = if y+1 > board.height-1 {board.height-1} else {y+1};
+        
+        let mut flag_count: u8 = 0;
+        let mut tiles_to_open = vec![];
+
+        for (entity, tile) in queries.p0().iter() {
+            if (tile.coords.0 >= initial_x && tile.coords.0 <= final_x) && (tile.coords.1 >= initial_y && tile.coords.1 <= final_y) {
+                if tile.status == TileStatus::FLAGGED {
+                    flag_count += 1;
+                } else {
+                    tiles_to_open.push(entity);
+                }
+            }
+        }
+
+        let mut tile_query = queries.p1();
+
+        if flag_count == event.value {
+            for entity in tiles_to_open.into_iter() {
+                let (mut handle, mut tile) = tile_query.get_mut(entity).unwrap();
+
+                if tile.status == TileStatus::CLOSED {
+                    execute_left_click(&mut tile, &mut handle, &asset_server, &mut zero_click_ewriter, &mut game_over_ewriter, &mut remaining);
+                }   
+            }
+        }
     }
 }
 

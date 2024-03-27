@@ -27,12 +27,8 @@ pub fn handle_remaining_tiles(
 	remaining: Res<ClosedEmpty>,
 	mut game_over_ewriter: EventWriter<GameOver>,
 ) {
-	if remaining.is_changed() {
-		println!("{}", remaining.count);
-		// move to the condition above
-		if remaining.count == 0 {
-			game_over_ewriter.send(GameOver{ won: true });
-		}
+	if remaining.is_changed() && remaining.count == 0 {
+		game_over_ewriter.send(GameOver{ won: true });
 	}
 }
 
