@@ -35,6 +35,7 @@ impl Plugin for TilePlugin {
                 handle_double_click,
                 handle_open_surrounding
             ).run_if(in_state(AppState::Game)))
-            .add_systems(OnEnter(AppState::GameOver), reveal_final_board);
+            .add_systems(OnEnter(AppState::GameOver), reveal_final_board)
+            .add_systems(OnExit(AppState::GameOver), despawn_tiles);
     }
 }

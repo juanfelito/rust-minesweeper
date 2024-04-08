@@ -3,7 +3,7 @@ use std::time::Duration;
 use bevy::asset::AssetPath;
 use bevy::{prelude::*, window::PrimaryWindow};
 
-use crate::board::resources::{Board, BoardConfig, ClosedEmpty, Flags};
+use crate::board::resources::{Board, BoardConfig, Remaining, Flags};
 use crate::events::GameOver;
 
 use super::events::*;
@@ -56,6 +56,15 @@ pub fn spawn_tiles(
     }
 }
 
+pub fn despawn_tiles(
+    mut commands: Commands,
+    enemy_query: Query<Entity, With<Tile>>
+) {
+    for tile_entity in enemy_query.iter() {
+        commands.entity(tile_entity).despawn();
+    }
+}
+
 pub fn hover_enter(
     window_query: Query<&Window, With<PrimaryWindow>>,
     mut tile_query: Query<(&Transform, &mut Handle<Image>, &Tile)>,
@@ -98,7 +107,7 @@ pub fn handle_left_click(
     mut zero_click_ewriter: EventWriter<ZeroClick>,
     mut game_over_ewriter: EventWriter<GameOver>,
     asset_server: Res<AssetServer>,
-    mut remaining: ResMut<ClosedEmpty>
+    mut remaining: ResMut<Remaining>
 ) {
     if mouse_button_input.just_pressed(MouseButton::Left) {
         let window = window_query.get_single().expect("No primary window");
@@ -119,7 +128,7 @@ fn execute_left_click(
     asset_server: &AssetServer,
     zero_click_ewriter: &mut EventWriter<ZeroClick>,
     game_over_ewriter: &mut EventWriter<GameOver>,
-    remaining: &mut ClosedEmpty
+    remaining: &mut Remaining
 ) {
     if tile.status == TileStatus::CLOSED {
         tile.status = TileStatus::OPENED;
@@ -191,7 +200,7 @@ pub fn handle_zero_click(
     board: Res<BoardConfig>,
     mut tile_query: Query<(&mut Handle<Image>, &mut Tile)>,
     asset_server: Res<AssetServer>,
-    mut remaining: ResMut<ClosedEmpty>
+    mut remaining: ResMut<Remaining>
 ) {
     let mut event_coords: Vec<(usize, usize)> =  vec![];
     for event in events.p0().read().into_iter() {
@@ -295,7 +304,7 @@ pub fn handle_open_surrounding(
     board: Res<BoardConfig>,
     mut queries: ParamSet<(Query<(Entity, &Tile)>, Query<(&mut Handle<Image>, &mut Tile)>)>,
     asset_server: Res<AssetServer>,
-    mut remaining: ResMut<ClosedEmpty>
+    mut remaining: ResMut<Remaining>
 ) {
     for event in ereader.read().into_iter() {
         let x = event.coords.0;
